@@ -3,7 +3,7 @@
     "description": "the new thinkphp framework",
     "type": "project",
     "keywords": [
-        "weixin",
+        "weixin"
     ],
     "homepage": "http://www.phpkit.me/",
     "license": "Apache-2.0",
