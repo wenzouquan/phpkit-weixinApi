@@ -1,11 +1,9 @@
 {
-    "name": "phpkit/weixin-api",
+    "name": "phpkit/weixinapi",
     "description": "the new thinkphp framework",
     "type": "project",
     "keywords": [
-        "framework",
-        "thinkphp",
-        "ORM"
+        "weixin",
     ],
     "homepage": "http://www.phpkit.me/",
     "license": "Apache-2.0",
