@@ -1,6 +1,6 @@
 {
     "name": "phpkit/weixinapi",
-    "description": "the new thinkphp framework",
+    "description": "微信公众号接口， 如发消息，发红包，获得用户信息等",
     "type": "project",
     "keywords": [
         "weixin"
