@@ -1,11 +1,12 @@
 <?php
-namespace phpkit\weixinapi;
+namespace phpkit\weixinapi; 
 class WeiXinApi {
 	var $postObj;
 	function __construct($param = array()) {
 		if (empty($param)) {
 			throw new \Exception("Error WeiXinApi params missing", 1);
-		}
+		} 
+		$this->cache=$param['cache'];
 		$this->token = trim($param['token']);
 		$this->appid = trim($param['appID']);
 		$this->mch_id = $param['mch_id'];
@@ -15,26 +16,7 @@ class WeiXinApi {
 		$this->appsecret = trim($param['appsecret']);
 	}
 
-	function cache($key, $data = null, $exp = "") {
-		$value = array(
-			'data' => $data,
-		);
-		if (intval($exp)) {
-			$value['exp'] = time() + $exp;
-		}
-		if ($data) {
-			S($key, $data);
-		} else {
-			$value = S($key);
-			if ($value['exp'] && $value['exp'] < time()) {
-				S($key, NULL);
-				return null;
-			} else {
-				return $value['data'];
-			}
-		}
-	}
-
+	 
 	/********微信开发者认证**********/
 	public function checkSignature() {
 		$signature = $_GET["signature"];
@@ -125,7 +107,7 @@ class WeiXinApi {
 	public function get_access_token() {
 		//cacheDel("access_token");
 		$key = "access_token_" . $this->appid . "_" . $this->store_id;
-		$access_token = $this->cache($key);
+		$access_token = $this->cache->get($key);
 		if ($access_token) {
 			return $access_token;
 		}
@@ -135,7 +117,7 @@ class WeiXinApi {
 		$output = $this->mycurl($url);
 		$jsoninfo = json_decode($output, true);
 		$access_token = $jsoninfo["access_token"];
-		$this->cache($key, $access_token, 3600);
+		$this->cache->set($key, $access_token, 3600);
 		return $access_token;
 	}
 
@@ -503,7 +485,7 @@ class WeiXinApi {
 			'wxappid' => $this->appid,
 			'send_name' => $this->app_name,
 			're_openid' => $data['openid'],
-			'total_amount' => $data['total_amount'],
+			'total_amount' => $data['total_amount']*100,
 			'total_num' => $data['total_num'],
 			'wishing' => $data['wishing'],
 			'client_ip' => getIp(),
@@ -557,20 +539,30 @@ class WeiXinApi {
 			'partner_trade_no' => date("YmdHis") . $this->great_rand(2),
 			'mchid' => $this->mch_id,
 			'mch_appid' => $this->appid,
-			'check_name' => 'FORCE_CHECK',
+			'check_name' =>$data['check_name']?$data['check_name']: 'FORCE_CHECK',
 			'openid' => $data['openid'],
-			'amount' => $data['amount'],
+			'amount' => $data['amount']*100,
 			'desc' => $data['desc'],
-			're_user_name' => $data['name'],
-			'spbill_create_ip' => getIp(),
+			'spbill_create_ip' => \phpkit\helper\getIp(),
 		);
+		if(isset($data['name'])){
+			$p['re_user_name']=$data['name'];
+		}
 		$p['sign'] = $this->get_sign($p);
 		//dump($p);exit();
 		$xml = $this->wxArrayToXml($p); //dump($xml);exit();
 		$url = "https://api.mch.weixin.qq.com/mmpaymkttransfers/promotion/transfers";
 		$r = $this->wxHttpsRequestPem($url, $xml);
+		if(is_array($r) && $r['error']>0){
+			return $r['msg'];
+		}
 		$r1 = $this->xmlToArray($r);
-		return $r1;
+		if(is_array($r1)){
+			return $r1;
+		}else{
+			return $r;
+		}
+		
 	}
 
 	function xmlToArray($xml) {
@@ -622,9 +614,9 @@ class WeiXinApi {
 			return $data;
 		} else {
 			$error = curl_errno($ch);
-			echo "call faild, errorCode:$error\n";
+			$errormsg ="curl call faild, errorCode:$error\n";
 			curl_close($ch);
-			return false;
+			return ['error'=>1,'msg'=>$errormsg];
 		}
 	}
 
@@ -667,12 +659,26 @@ class WeiXinApi {
 		$sign = strtoupper(md5($stringSignTemp));
 		return $sign;
 	}
+	//微信小程序支付
+	// 'timeStamp': '',
+   // 'nonceStr': '',
+   // 'package': '',
+   // 'signType': 'MD5',
+   // 'paySign': '',
+	public function getAppPayParams($data){
+		$data['timeStamp']="".time();
+		$data['nonceStr']=$this->createNonceStr();
+		$data['signType']='MD5';
+		$data['paySign']=$this->get_sign($data);
+		return $data;
+
+	}
 
 	/******getJsApiTicket js 分享*******/
 	private function getJsApiTicket() {
 		// cacheDel("getJsApiTicket");
 		$key = "getJsApiTicket_" . $this->appid . "_" . $this->store_id;
-		$ticket = $this->cache($key);
+		$ticket = $this->cache->get($key);
 		if ($ticket) {
 			//return $ticket;
 		}
@@ -682,7 +688,7 @@ class WeiXinApi {
 		$res = json_decode($this->mycurl($url));
 		$ticket = $res->ticket;
 		//S($key, NULL);
-		$this->cache($key, $ticket, 3600);
+		$this->cache->set($key, $ticket, 3600);
 		//dump($ticket);
 		return $ticket;
 	}
